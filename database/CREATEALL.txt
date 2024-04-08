@@ -1,0 +1,362 @@
+-- FUNCTION: public.delete_chaine()
+
+-- DROP FUNCTION IF EXISTS public.delete_chaine();
+
+CREATE OR REPLACE FUNCTION public.delete_chaine()
+    RETURNS trigger
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE NOT LEAKPROOF
+AS $BODY$
+BEGIN
+    DELETE FROM Hotel WHERE chaine_hoteliereid = OLD.chaine_hoteliereid;
+	return null;
+END
+$BODY$;
+
+ALTER FUNCTION public.delete_chaine()
+    OWNER TO postgres;
+
+
+-- FUNCTION: public.delete_chambre()
+
+-- DROP FUNCTION IF EXISTS public.delete_chambre();
+
+CREATE OR REPLACE FUNCTION public.delete_chambre()
+    RETURNS trigger
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE NOT LEAKPROOF
+AS $BODY$
+BEGIN
+    DELETE FROM chambre WHERE chambreid = OLD.chambreid;
+	return null;
+END
+$BODY$;
+
+ALTER FUNCTION public.delete_chambre()
+    OWNER TO postgres;
+
+-- FUNCTION: public.delete_hotel()
+
+-- DROP FUNCTION IF EXISTS public.delete_hotel();
+
+CREATE OR REPLACE FUNCTION public.delete_hotel()
+    RETURNS trigger
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE NOT LEAKPROOF
+AS $BODY$
+BEGIN
+    DELETE FROM chambre WHERE hotelid = OLD.hotelid;
+	return null;
+END
+$BODY$;
+
+ALTER FUNCTION public.delete_hotel()
+    OWNER TO postgres;
+
+-- FUNCTION: public.reservation()
+
+-- DROP FUNCTION IF EXISTS public.reservation();
+
+CREATE OR REPLACE FUNCTION public.reservation()
+    RETURNS trigger
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE NOT LEAKPROOF
+AS $BODY$
+BEGIN
+    UPDATE Chambre SET Disponibilite = false WHERE ChambreID = NEW.ChambreID ;
+	
+   RETURN NULL;
+END;
+$BODY$;
+
+ALTER FUNCTION public.reservation()
+    OWNER TO postgres;
+
+
+-- Table: public.chaine_hoteliere
+
+-- DROP TABLE IF EXISTS public.chaine_hoteliere;
+
+CREATE TABLE IF NOT EXISTS public.chaine_hoteliere
+(
+    chaine_hoteliereid integer NOT NULL,
+    nombre_hotel integer,
+    email character varying(50) COLLATE pg_catalog."default",
+    telephone character varying(20) COLLATE pg_catalog."default",
+    addresse character varying(100) COLLATE pg_catalog."default",
+    classement integer,
+    CONSTRAINT chaine_hoteliere_pkey PRIMARY KEY (chaine_hoteliereid)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.chaine_hoteliere
+    OWNER to postgres;
+
+-- Table: public.chambre
+
+-- DROP TABLE IF EXISTS public.chambre;
+
+CREATE TABLE IF NOT EXISTS public.chambre
+(
+    chambreid integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
+    adresse character varying(50) COLLATE pg_catalog."default",
+    prix numeric(10,2),
+    commodities character varying COLLATE pg_catalog."default",
+    capacity integer,
+    disponibilite boolean,
+    hotelid integer,
+    vue character varying(255) COLLATE pg_catalog."default",
+    etendue character varying(255) COLLATE pg_catalog."default",
+    probleme character varying(255) COLLATE pg_catalog."default",
+    chaine_hoteliereid integer,
+    CONSTRAINT chambre_pkey PRIMARY KEY (chambreid)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.chambre
+    OWNER to postgres;
+-- Index: 9
+
+-- DROP INDEX IF EXISTS public."9";
+
+CREATE INDEX IF NOT EXISTS "9"
+    ON public.chambre USING btree
+    (chaine_hoteliereid ASC NULLS LAST)
+    TABLESPACE pg_default;
+-- Index: chambre_prix_idx
+
+-- DROP INDEX IF EXISTS public.chambre_prix_idx;
+
+CREATE INDEX IF NOT EXISTS chambre_prix_idx
+    ON public.chambre USING btree
+    (prix ASC NULLS LAST)
+    TABLESPACE pg_default;
+-- Index: hotelid
+
+-- DROP INDEX IF EXISTS public.hotelid;
+
+CREATE INDEX IF NOT EXISTS hotelid
+    ON public.chambre USING btree
+    (hotelid ASC NULLS LAST)
+    TABLESPACE pg_default;
+
+-- Trigger: delete_chambre_location
+
+-- DROP TRIGGER IF EXISTS delete_chambre_location ON public.chambre;
+
+CREATE TRIGGER delete_chambre_location
+    AFTER DELETE
+    ON public.chambre
+    FOR EACH ROW
+    EXECUTE FUNCTION public.delete_chambre();
+
+-- Trigger: delete_chambre_reservation
+
+-- DROP TRIGGER IF EXISTS delete_chambre_reservation ON public.chambre;
+
+CREATE TRIGGER delete_chambre_reservation
+    AFTER DELETE
+    ON public.chambre
+    FOR EACH ROW
+    EXECUTE FUNCTION public.delete_chambre();
+
+-- Table: public.client
+
+-- DROP TABLE IF EXISTS public.client;
+
+CREATE TABLE IF NOT EXISTS public.client
+(
+    clientid integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
+    nom character varying(50) COLLATE pg_catalog."default",
+    addresse character varying(50) COLLATE pg_catalog."default",
+    nas integer,
+    date_enregistrement date,
+    CONSTRAINT client_pkey PRIMARY KEY (clientid)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.client
+    OWNER to postgres;
+
+-- Table: public.employee
+
+-- DROP TABLE IF EXISTS public.employee;
+
+CREATE TABLE IF NOT EXISTS public.employee
+(
+    employeeid integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
+    nom character varying(50) COLLATE pg_catalog."default",
+    adresse character varying(50) COLLATE pg_catalog."default",
+    nas integer,
+    role character varying COLLATE pg_catalog."default",
+    chaine_hoteliereid integer,
+    CONSTRAINT employee_pkey PRIMARY KEY (employeeid),
+    CONSTRAINT employee_chaine_hoteliereid_fkey FOREIGN KEY (chaine_hoteliereid)
+        REFERENCES public.chaine_hoteliere (chaine_hoteliereid) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION
+        NOT VALID
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.employee
+    OWNER to postgres;
+-- Index: cha
+
+-- DROP INDEX IF EXISTS public.cha;
+
+CREATE INDEX IF NOT EXISTS cha
+    ON public.employee USING btree
+    (chaine_hoteliereid ASC NULLS LAST)
+    TABLESPACE pg_default;
+
+-- Table: public.gestionnaire
+
+-- DROP TABLE IF EXISTS public.gestionnaire;
+
+-- Table: public.gestionnaire
+
+-- DROP TABLE IF EXISTS public.gestionnaire;
+
+CREATE TABLE IF NOT EXISTS public.gestionnaire
+(
+    gestionnaireid integer NOT NULL,
+    hotelid integer,
+    employeeid integer,
+    CONSTRAINT gestionnaire_pkey PRIMARY KEY (gestionnaireid)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.gestionnaire
+    OWNER to postgres;
+
+
+
+-- Table: public.hotel
+
+-- DROP TABLE IF EXISTS public.hotel;
+
+CREATE TABLE IF NOT EXISTS public.hotel
+(
+    hotelid integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
+    nombre_chambres bigint,
+    adresse character varying(100) COLLATE pg_catalog."default",
+    telephone character varying(20) COLLATE pg_catalog."default",
+    courriel character varying(255) COLLATE pg_catalog."default",
+    chaine_hoteliereid integer,
+    "GestionnaireID" integer,
+    CONSTRAINT hotel_pkey PRIMARY KEY (hotelid),
+    CONSTRAINT "hotel_GestionnaireID_fkey" FOREIGN KEY ("GestionnaireID")
+        REFERENCES public.gestionnaire (gestionnaireid) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION
+        NOT VALID
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.hotel
+    OWNER to postgres;
+-- Index: chaine_hotelierid
+
+-- DROP INDEX IF EXISTS public.chaine_hotelierid;
+
+CREATE INDEX IF NOT EXISTS chaine_hotelierid
+    ON public.hotel USING btree
+    (chaine_hoteliereid ASC NULLS LAST)
+    TABLESPACE pg_default;
+
+-- Trigger: chaine_hoteliere4
+
+-- DROP TRIGGER IF EXISTS chaine_hoteliere4 ON public.hotel;
+
+CREATE TRIGGER chaine_hoteliere4
+    AFTER DELETE
+    ON public.hotel
+    REFERENCING OLD TABLE AS chaine_hoteliere
+    FOR EACH ROW
+    EXECUTE FUNCTION public.delete_chaine();
+
+-- Trigger: delete_hotel3
+
+-- DROP TRIGGER IF EXISTS delete_hotel3 ON public.hotel;
+
+CREATE TRIGGER delete_hotel3
+    AFTER DELETE
+    ON public.hotel
+    REFERENCING OLD TABLE AS hotel
+    FOR EACH ROW
+    EXECUTE FUNCTION public.delete_hotel();
+
+-- Table: public.location
+
+-- DROP TABLE IF EXISTS public.location;
+
+CREATE TABLE IF NOT EXISTS public.location
+(
+    locationid integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
+    date_de_debut date,
+    date_de_fin date,
+    chambreid integer,
+    "clientID" integer,
+    "employeeID" integer,
+    CONSTRAINT location_pkey PRIMARY KEY (locationid),
+    CONSTRAINT "location_clientID_fkey" FOREIGN KEY ("clientID")
+        REFERENCES public.client (clientid) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION
+        NOT VALID,
+    CONSTRAINT "location_clientID_fkey1" FOREIGN KEY ("clientID")
+        REFERENCES public.client (clientid) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION
+        NOT VALID,
+    CONSTRAINT "location_employeeID_fkey" FOREIGN KEY ("employeeID")
+        REFERENCES public.employee (employeeid) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION
+        NOT VALID
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.location
+    OWNER to postgres;
+
+-- Table: public.reservation
+
+-- DROP TABLE IF EXISTS public.reservation;
+
+CREATE TABLE IF NOT EXISTS public.reservation
+(
+    reservationid integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
+    date_de_debut date,
+    date_de_fin date,
+    chambreid integer,
+    "clientID" integer,
+    CONSTRAINT reservation_pkey PRIMARY KEY (reservationid)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.reservation
+    OWNER to postgres;
+
+-- Trigger: update_room_availability
+
+-- DROP TRIGGER IF EXISTS update_room_availability ON public.reservation;
+
+CREATE TRIGGER update_room_availability
+    AFTER INSERT
+    ON public.reservation
+    FOR EACH ROW
+    EXECUTE FUNCTION public.reservation();
